@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traveler Toolkit</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{ font-family:'Montserrat',sans-serif; background:#f7f7f7; margin:0; padding:0;}
+.container{ max-width:760px; margin:auto; background:#fff; padding:28px; border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,.12);}
+h2{ text-align:center; margin-bottom:24px;}
+.row{ margin-bottom:18px;}
+.label{ font-size:13px; font-weight:500; margin-bottom:6px;}
+.converter{ display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+input, select{ padding:12px; border-radius:8px; border:1px solid #ccc; background:#f6f6f6; font-family:'Montserrat'; flex:1; min-width:120px; height:46px;}
+.toggle{ cursor:pointer; width:40px; text-align:center; font-size:20px;}
+.output{ background:#f2f2f2; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0 10px; min-width:80px; height:46px; font-weight:500;}
+.section{ margin-top:30px; padding-top:20px; border-top:1px solid #eee;}
+.note{ font-size:12px; opacity:.7; margin-top:8px; text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="container" id="toolkit">
+
+<h2>Traveler Measurement & Fuel Toolkit</h2>
+
+<!-- Measurements -->
+<div class="row" id="measurements"></div>
+
+<!-- TSA Liquid -->
+<div class="section">
+<div class="label">✈️ TSA Liquid Rule</div>
+<div class="converter">
+<input type="number" id="tsaInput" placeholder="Milliliters">
+<div class="output" id="tsaOutput">—</div>
+</div>
+<div class="note">Maximum allowed: 100 mL (≈3.38 oz)</div>
+</div>
+
+<!-- Fuel Price -->
+<div class="section">
+<div class="label">⛽ Fuel Price Converter</div>
+<div class="converter">
+<input type="number" id="fuelPrice" placeholder="Price per liter">
+<select id="fuelCurrency">
+<option value="USD">USD $</option>
+<option value="EUR">Euro €</option>
+<option value="GBP">Pound £</option>
+<option value="JPY">Yen ¥</option>
+<option value="INR">Rupee ₹</option>
+<option value="ARS">Argentine Peso</option>
+<option value="BTN">Ngultrum</option>
+<option value="LKR">Sri Lankan Rupee</option>
+</select>
+</div>
+<div class="output" id="fuelOutput">—</div>
+<div class="note">Result: USD per gallon equivalent</div>
+</div>
+
+</div>
+
+<script>
+const measurementsData = [
+  {id:'meters', label:'Meters ⇄ Feet', factor:3.28084, unit1:'m', unit2:'ft', direction:true, value:'', display:'—'},
+  {id:'kg', label:'Kilograms ⇄ Pounds', factor:2.20462, unit1:'kg', unit2:'lb', direction:true, value:'', display:'—'},
+  {id:'cm', label:'Centimeters ⇄ Inches', factor:0.393701, unit1:'cm', unit2:'in', direction:true, value:'', display:'—'},
+  {id:'temp', label:'Celsius ⇄ Fahrenheit', direction:true, value:'', display:'—'},
+  {id:'km', label:'Kilometers ⇄ Miles', factor:0.621371, unit1:'km', unit2:'mi', direction:true, value:'', display:'—'},
+  {id:'l', label:'Liters ⇄ Gallons', factor:0.264172, unit1:'L', unit2:'gal', direction:true, value:'', display:'—'},
+  {id:'ml', label:'Milliliters ⇄ Ounces', factor:0.033814, unit1:'mL', unit2:'oz', direction:true, value:'', display:'—'}
+];
+
+const container = document.getElementById('measurements');
+
+measurementsData.forEach(m => {
+  const div = document.createElement('div');
+  div.classList.add('row');
+  div.innerHTML = `
+    <div class="label">${m.label}</div>
+    <div class="converter">
+      <input type="number" id="${m.id}Input" placeholder="${m.unit1}">
+      <div class="toggle" id="${m.id}Toggle">⇄</div>
+      <div class="output" id="${m.id}Output">—</div>
+    </div>
+  `;
+  container.appendChild(div);
+  // toggle click
+  document.getElementById(m.id+'Toggle').addEventListener('click', ()=>{
+    m.direction = !m.direction;
+    document.getElementById(m.id+'Input').value='';
+    document.getElementById(m.id+'Output').innerText='—';
+  });
+  // input event
+  document.getElementById(m.id+'Input').addEventListener('input', ()=>{
+    const val = parseFloat(document.getElementById(m.id+'Input').value);
+    if(isNaN(val)){ document.getElementById(m.id+'Output').innerText='—'; return;}
+    let out;
+    if(m.id==='temp'){
+      if(m.direction) out = ((val*9/5)+32).toFixed(1)+' °F';
+      else out = ((val-32)*5/9).toFixed(1)+' °C';
+    } else {
+      if(m.direction) out = (val*m.factor).toFixed(2)+' '+m.unit2;
+      else out = (val/m.factor).toFixed(2)+' '+m.unit1;
+    }
+    document.getElementById(m.id+'Output').innerText = out;
+  });
+});
+
+// TSA
+document.getElementById('tsaInput').addEventListener('input', ()=>{
+  const val = parseFloat(document.getElementById('tsaInput').value);
+  if(isNaN(val)){ document.getElementById('tsaOutput').innerText='—'; return;}
+  document.getElementById('tsaOutput').innerText = (val*0.033814).toFixed(2)+' oz';
+});
+
+// Fuel
+let rates = {};
+fetch('https://api.exchangerate.host/latest?base=USD').then(r=>r.json()).then(d=>rates=d.rates);
+function updateFuel(){ 
+  const price = parseFloat(document.getElementById('fuelPrice').value);
+  const cur = document.getElementById('fuelCurrency').value;
+  if(isNaN(price) || !rates[cur]){ document.getElementById('fuelOutput').innerText='—'; return;}
+  const usdPerLiter = price / rates[cur];
+  const usdPerGallon = usdPerLiter * 3.78541;
+  document.getElementById('fuelOutput').innerText='$'+usdPerGallon.toFixed(2)+' / gallon';
+}
+document.getElementById('fuelPrice').addEventListener('input', updateFuel);
+document.getElementById('fuelCurrency').addEventListener('change', updateFuel);
+
+</script>
+
+</body>
+</html>
