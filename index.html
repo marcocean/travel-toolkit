@@ -128,6 +128,45 @@ function updateFuel(){
 document.getElementById('fuelPrice').addEventListener('input', updateFuel);
 document.getElementById('fuelCurrency').addEventListener('change', updateFuel);
 
+  <script>
+function travelToolkit(){
+  return {
+    rates: {},
+    measurements:[
+      {id:'meters', label:'Meters ⇄ Feet', value:'', direction:true, display:'', factor:3.28084},
+      {id:'kg', label:'Kilograms ⇄ Pounds', value:'', direction:true, display:'', factor:2.20462},
+      {id:'cm', label:'Centimeters ⇄ Inches', value:'', direction:true, display:'', factor:0.393701},
+      {id:'temp', label:'Celsius ⇄ Fahrenheit', value:'', direction:true, display:''},
+      {id:'km', label:'Kilometers ⇄ Miles', value:'', direction:true, display:'', factor:0.621371},
+      {id:'l', label:'Liters ⇄ Gallons', value:'', direction:true, display:'', factor:0.264172},
+      {id:'ml', label:'Milliliters ⇄ Ounces', value:'', direction:true, display:'', factor:0.033814}
+    ],
+    tsa:{value:'', display:''},
+    fuel:{price:'', currency:'USD', display:''},
+    init(){
+      // fetch currency rates
+      fetch('https://api.exchangerate.host/latest?base=USD')
+        .then(r=>r.json())
+        .then(data=>this.rates = data.rates);
+    },
+    convert(m){
+      if(m.id==='temp'){
+        if(m.direction && m.value!=='') m.display = ((m.value*9/5)+32).toFixed(1)+' °F';
+        else if(!m.direction && m.value!=='') m.display = ((m.value-32)*5/9).toFixed(1)+' °C';
+      } else if(m.value!==''){
+        if(m.direction) m.display = (m.value*m.factor).toFixed(2)+'';
+        else m.display = (m.value/m.factor).toFixed(2)+'';
+      } else m.display='—';
+    },
+    convertFuel(){
+      let price = parseFloat(this.fuel.price);
+      let cur = this.fuel.currency;
+      if(!price || !this.rates[cur]) { this.fuel.display='—'; return; }
+      let usdPerLiter = price / this.rates[cur];
+      let usdPerGallon = usdPerLiter * 3.78541;
+      this.fuel.display = '$'+usdPerGallon.toFixed(2)+' / gallon';
+    },
+  }
 </script>
 
 </body>
